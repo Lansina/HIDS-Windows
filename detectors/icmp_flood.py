@@ -1,16 +1,20 @@
-from core.sniffer import start_sniffer
+from collections import defaultdict
+import time
+import logging
+
+logger = logging.getLogger('detections_log')
+
+icmp_tracker = defaultdict(list)
 
 def detect_icmp_flood(packet):
-    """
-    Detects ICMP flood attacks based on the number of ICMP packets received in a short time frame.
-    """
-    # Check if the packet is an ICMP packet
+ 
     if 'ICMP' in packet:
-        # Increment the count for ICMP packets
-        detect_icmp_flood.icmp_count += 1
+        src_ip = packet.ip.src
+        current_time = time.time()
 
-        # Check if the count exceeds a threshold (e.g., 100 packets in 1 second)
-        if detect_icmp_flood.icmp_count > 100:
-            print("ICMP Flood Attack Detected!")
-            detect_icmp_flood.icmp_count = 0  # Reset count after detection
+        icmp_tracker[src_ip].append(current_time)
+        icmp_tracker[src_ip] = [t for t in icmp_tracker[src_ip] if current_time - t < 1]  # Keep only timestamps within the last second
+
+        if len(icmp_tracker[src_ip]) > 100:
+            logger.warning(f"ICMP flood detected from {src_ip}")
 
